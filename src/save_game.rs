@@ -1,11 +1,10 @@
+use crate::game;
+use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
     io::Write,
     path::Path,
 };
-
-use crate::game;
-use serde::{Deserialize, Serialize};
 use toml;
 
 #[derive(Deserialize, Serialize)]
@@ -15,23 +14,38 @@ struct Save {
 }
 
 pub fn save_game(rpg: &game::RPG) {
-    println!("{}, {}", rpg.player_name.clone(), rpg.class.clone());
+    println!("{}, {}", rpg.player_name, rpg.class);
 
-    let save: Save = Save {
+    let save = Save {
         player_name: rpg.player_name.clone(),
         class: rpg.class.clone(),
     };
 
-    let toml = toml::to_string(&save).unwrap();
+    let toml = match toml::to_string(&save) {
+        Ok(s) => s,
+        Err(e) => {
+            panic!("Serialization error: {}", e);
+        }
+    };
 
     let path = Path::new("save.toml");
 
-    let mut file = if path.exists() {
-        fs::remove_file(path).unwrap();
-        File::create(path).unwrap()
-    } else {
-        File::create(path).unwrap()
+    if path.exists() {
+        match fs::remove_file(path) {
+            Ok(_) => (),
+            Err(e) => {
+                panic!("Error removing existing file: {}", e)
+            }
+        }
+    }
+
+    let mut file = match File::create(path) {
+        Ok(f) => f,
+        Err(e) => panic!("{}", e),
     };
 
-    file.write_all(toml.as_bytes()).unwrap();
+    match file.write_all(toml.as_bytes()) {
+        Ok(_) => {}
+        Err(e) => panic!("{}", e),
+    }
 }
